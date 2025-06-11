@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Шахи</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: system-ui, sans-serif;
+      margin-top: 20px;
+    }
+
+    #controls {
+      margin-bottom: 15px;
+      user-select: none;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      border: 2px solid #333;
+    }
+
+    .square {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      cursor: pointer;
+    }
+
+    .white {
+      background: #f0d9b5;
+    }
+
+    .black {
+      background: #b58863;
+    }
+
+    .highlight {
+      background: radial-gradient(circle, rgba(180, 238, 180, 0.9) 0%, rgba(255, 255, 255, 0.651) 70%);
+    }
+
+    button {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="controls">
+    <label>
+      Фігура:
+      <select id="piece">
+        <option value="king">Король</option>
+        <option value="queen">Ферзь</option>
+        <option value="rook">Тура</option>
+        <option value="bishop">Слон</option>
+        <option value="knight">Кінь</option>
+        <option value="pawnWhite">Пішак (білий)</option>
+        <option value="pawnBlack">Пішак (чорний)</option>
+      </select>
+    </label>
+    <button id="clear">Очистити</button>
+  </div>
+
+  <div id="board"></div>
+
+  <script>
+    const board = document.getElementById("board");
+    const pieceSelect = document.getElementById("piece");
+    const clearBtn = document.getElementById("clear");
+
+    const pieceIcons = {
+      king: "♔",
+      queen: "♕",
+      rook: "♖",
+      bishop: "♗",
+      knight: "♘",
+      pawnWhite: "♙",
+      pawnBlack: "♟",
+    };
+
+    function createBoard() {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const sq = document.createElement("div");
+          sq.classList.add("square", (r + c) % 2 === 0 ? "white" : "black");
+          sq.dataset.row = r;
+          sq.dataset.col = c;
+          sq.addEventListener("click", handleClick);
+          board.appendChild(sq);
+        }
+      }
+    }
+
+    function clearBoard() {
+      document.querySelectorAll(".square").forEach((sq) => {
+        sq.textContent = "";
+        sq.classList.remove("highlight");
+      });
+    }
+
+    function handleClick(e) {
+      const r = parseInt(e.currentTarget.dataset.row);
+      const c = parseInt(e.currentTarget.dataset.col);
+      const piece = pieceSelect.value;
+      clearBoard();
+      placePiece(piece, r, c);
+      const moves = getMoves(piece, r, c);
+      moves.forEach(({ r, c }) => {
+        const sq = board.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        sq.classList.add("highlight");
+      });
+    }
+
+    function placePiece(piece, r, c) {
+      const sq = board.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+      sq.textContent = pieceIcons[piece];
+    }
+
+    function inBoard(r, c) {
+      return r >= 0 && r < 8 && c >= 0 && c < 8;
+    }
+
+    function linearMoves(r, c, directions) {
+      const ms = [];
+      directions.forEach(([dr, dc]) => {
+        let nr = r + dr,
+          nc = c + dc;
+        while (inBoard(nr, nc)) {
+          ms.push({ r: nr, c: nc });
+          nr += dr;
+          nc += dc;
+        }
+      });
+      return ms;
+    }
+
+    function getMoves(piece, r, c) {
+      const moves = [];
+      switch (piece) {
+        case "king":
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (dr || dc) {
+                const nr = r + dr,
+                  nc = c + dc;
+                if (inBoard(nr, nc)) moves.push({ r: nr, c: nc });
+              }
+            }
+          }
+          break;
+        case "queen":
+          moves.push(
+            ...linearMoves(r, c, [
+              [1, 0],
+              [-1, 0],
+              [0, 1],
+              [0, -1],
+              [1, 1],
+              [-1, -1],
+              [1, -1],
+              [-1, 1],
+            ])
+          );
+          break;
+        case "rook":
+          moves.push(...linearMoves(r, c, [[1, 0], [-1, 0], [0, 1], [0, -1]]));
+          break;
+        case "bishop":
+          moves.push(...linearMoves(r, c, [[1, 1], [-1, -1], [1, -1], [-1, 1]]));
+          break;
+        case "knight":
+          [
+            [2, 1],
+            [2, -1],
+            [-2, 1],
+            [-2, -1],
+            [1, 2],
+            [-1, 2],
+            [1, -2],
+            [-1, -2],
+          ].forEach(([dr, dc]) => {
+            const nr = r + dr,
+              nc = c + dc;
+            if (inBoard(nr, nc)) moves.push({ r: nr, c: nc });
+          });
+          break;
+        case "pawnWhite":
+          if (inBoard(r - 1, c)) moves.push({ r: r - 1, c });
+          if (r === 6 && inBoard(r - 2, c)) moves.push({ r: r - 2, c });
+          if (inBoard(r - 1, c - 1)) moves.push({ r: r - 1, c: c - 1 });
+          if (inBoard(r - 1, c + 1)) moves.push({ r: r - 1, c: c + 1 });
+          break;
+        case "pawnBlack":
+          if (inBoard(r + 1, c)) moves.push({ r: r + 1, c });
+          if (r === 1 && inBoard(r + 2, c)) moves.push({ r: r + 2, c });
+          if (inBoard(r + 1, c - 1)) moves.push({ r: r + 1, c: c - 1 });
+          if (inBoard(r + 1, c + 1)) moves.push({ r: r + 1, c: c + 1 });
+          break;
+      }
+      return moves;
+    }
+
+    clearBtn.addEventListener("click", clearBoard);
+
+    createBoard();
+  </script>
+</body>
+</html>
